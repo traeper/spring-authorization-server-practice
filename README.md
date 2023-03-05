@@ -9,7 +9,7 @@ rfc6749 문서에 따르면 'OAuth 2.0 인가(인증) 프레임워크'라는 말
 OAuth 2.0은 서드파티 앱이 특정 서비스의 제한이 걸린 자원에 접근하기 위해 리소스 오너(사용자)의 허락을 받아 자원에 접근을 하게되는 일련의 플로우를 제공한다.
 구글, 페이스북 등 유수의 IT 기업들은 자신의 우수한 회원 체계, 여러 코어 서비스를 바탕으로 OAuth 2.0 서비스를 제공하고 있다.
 
-rfc문서에서는 프레임워크라고 말하는데 알고리즘, 프로토콜 같은 조그만 범위를 넘어 일종의 체계화된 틀이며 이 틀에 맞춰 충실히 스펙을 구현하면 된다는 말로도 이해할 수 있다. 이어서 말하겠지만 OAuth 2.0의 구조는 단순한 편은 결코 아니다.
+rfc문서에서는 프레임워크라고 말하는데 알고리즘, 프로토콜 같은 조그만 범위를 넘어 일종의 체계화된 틀이며 이 틀에 맞춰 충실히 스펙을 구현하면 된다는 말로도 이해할 수 있다. 이어서 말하겠지만 OAuth 2.0의 구조는 단순한 편이 결코 아니다.
 
 ### Protocol Flow
 
@@ -26,7 +26,7 @@ Protocol Flow를 간단히 살펴보면 아래와 같다.
 * (E), (F) : Access Token을 이용한 Protected Resource을 이용
 
 ### Client Credentials Grant
-OAuth 2.0 여러 인증 방식 중 Server to Server 구현에 해당하며 가장 간단한 **Client Credentials Grant**을 다루고자 한다.
+OAuth 2.0 여러 인증 방식 중 Server to Server 구현에 해당하며 가장 간단한 **Client Credentials Grant**을 구현해보고자 한다.
 
 ![](./resources/client-credentials-grant.png)
 
@@ -35,18 +35,18 @@ OAuth 2.0 여러 인증 방식 중 Server to Server 구현에 해당하며 가�
 이 Protocol Flow가 동작하기 전에 Authorization Server에서 ClientId, ClientSecret을 생성한 다음 Client가 이를 갖고 있는 상황에서 진행해야 한다.  
 
 ## Authorization Server Practice
-이번 블로깅에서는 Client Credentials Grant을 지원하는 Authorization Server을 구현하고자 한다. OAuth 2.0에 대해 여러 구현이 있지만 23년 3월 기준으로 최신 구현인 Spring Authorization Server을 이용하고자 한다.
+OAuth 2.0에 대해 여러 구현이 있지만 23년 3월 기준으로 최신 구현인 Spring Authorization Server 프레임워크를 이용하고자 한다.
 이 프레임워크도 Spring Security의 SecurityFilterChain 기반으로 동작하므로 Spring Security에 대한 이해가 선행되어 있어야 한다.
 
 ![](./resources/spring-authorization-server-reference.png)
-Access Token을 발급하기 위해서는 Reference -> Protocol Endpoints -> OAuth2 Token Endpoint를 참조하면 된다.
+위 이미지는 공식 Reference 문서이다. Access Token을 발급하는 부분을 보고 싶으면 Protocol Endpoints -> OAuth2 Token Endpoint를 참조하면 된다.
 해당 가이드에서는 AccessTokenRequestConverter, AuthenticationProvider, AccessTokenResponseHandler 등 SecurityFilterChain 구현체에 참여하는 다양한 요소들에 대해 커스터마이저를 제공하지만 커스터마이징을 할 필요는 거의 없을 것이다. 프레임워크가 rfc 문서에 적혀있는 OAuth 2.0 프레임워크의 스펙을 대부분 커버하므로 그대로 활용하면 될 뿐이다.
 
-ClientId, ClientSecret 등 Client Authentication 동작에 필요한 저장소는 RegisteredClientRepository을 구현하면 되는데, In-Memory, Jdbc 구현체를 기본적으로 제공하며 [JPA 기반으로 작성된 예제](https://docs.spring.io/spring-authorization-server/docs/current/reference/html/guides/how-to-jpa.html)도 충분히 제공하고 있다. 실무를 하면서 JPA로 구현을 해봤었는데 꽤 귀찮으니 지금은 In-Memory로 구현해보겠다.
+ClientId, ClientSecret 등 Client Authentication 동작에 필요한 저장소는 RegisteredClientRepository을 구현하면 되는데, In-Memory, Jdbc 구현체를 기본적으로 제공하며 [JPA 기반으로 작성된 예제](https://docs.spring.io/spring-authorization-server/docs/current/reference/html/guides/how-to-jpa.html)도 충분히 제공하고 있다. JPA로 구현을 해봤었는데 이번에는 간단하게 In-Memory로 구현해보겠다.
 
 ### Security Configuration
-[SecurityConfiguration](./src/main/kotlin/com/traeper/oauth2/authorization/configuration/SecurityConfiguration.kt)처럼 SecurityFilterChain 빈을 구성했다. Spring Reference에서 제공하는 예제로 충분하여 따로 타자를 치면서 설정할 것은 거의 없었다.
-구현하고자 했던 Client Credentials Grant 방식에 Authorization Basic Header를 이용한 인증 방식을 지원하기 위해 RegisteredClientRepository의 구현체는 아래처럼 커스터마이징 했다. 참고로 Access Token, Refresh Token 등의 유효시간도 설정할 수 있다.
+[SecurityConfiguration](./src/main/kotlin/com/traeper/oauth2/authorization/configuration/SecurityConfiguration.kt) 파일을 보면 심플하게 구현된 SecurityFilterChain을 볼 수 있다. Reference가 워낙 잘 나와서 보고 따라 적으면 되는 수준이긴 하다. 👍  
+Client Credentials Grant 방식에 Authorization Basic Header를 이용한 인증 방식을 지원하기 위해 RegisteredClientRepository의 구현체는 아래처럼 커스터마이징 했다. 참고로 Access Token, Refresh Token 등의 유효시간도 설정할 수 있다.
 ```kotlin
 @Bean
 fun registeredClientRepository(): RegisteredClientRepository {
@@ -61,7 +61,7 @@ fun registeredClientRepository(): RegisteredClientRepository {
 ```
 
 간편한 테스트를 위해 Resource Server의 역할도 겸하게 하였으며 구현이 간편한 jwt를 이용하도록 설정을 잡았다.
-만약 Opaque Token을 이용하려 한다면 제공되는 기본 구현체가 Resource Server에서 Access Token을 검증하기 위해 Authorization Server으로 RestTemplate을 이용해서 통신해야만 하는 불편함이 있다. (두 서버를 따로 뛰워야 하는 불편함이 있다.)
+만약 Opaque Token을 이용하려 한다면 프레임워크 기본 구현체가 Resource Server에서 RestTemplate로 Authorization Server을 호출해야하므로 두 서버를 따로 뛰워야 하는 불편함이 있다.
 
 ### 간단한 API 코드 작성
 Security 설정이 잘 되었는지 확인하기 위해 샘플 API를 작성했다.  
