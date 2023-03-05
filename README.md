@@ -101,6 +101,7 @@ curl -X POST http://localhost:8080/custom-uri/oauth2/token\?grant_type\=client_c
 client_secret_basic 헤더가 없어서 401이 발생하지만 WWW-Authenticate는 보이지 않는다. Basic 헤더를 잘 넘겨주자..! 
 
 3. Access Token 발급 시도 (client_secret_basic 헤더와 함께)
+
 client_secret_basic 헤더의 포맷은 `Authorization: Basic {base64 encoded string}`이다.
 `{clientId}:{clientSecret}`의 복합 문장을 base64 인코딩하면 끝이다. 예시는 [테스트케이스](./src/test/kotlin/com/traeper/oauth2/authorization/ApplicationTests.kt)로 구현해뒀다.
 
@@ -129,7 +130,28 @@ curl -X GET localhost:8080/v1/users/me \
 {"nickname":"traeper"}%
 ```
 
-드디어 성공했다. :)
+소량의 코드만으로 OAuth 2.0 Authorization Server 구현 성공!
+
+## Spring Authorization Framework 파헤쳐 보기
+프레임워크가 동작하는 원리를 좀더 파보자.
+
+### FilterChainProxy 중 사용된 Filter 살펴보기 
+![](./resources/FilterChainProxy-oauth2.png)
+
+위 이미지는 FilterChainProxy의 filterChains 필드에 등록된 필터들을 보여준다.
+Spring Security가 제공하는 10개 정도의 기본 필터 외에도 OAuth 2.0 Authorization Server 구현을 위한 필터도 약 10개 정도 추가되어 총 19개나 된다.
+
+이번 테스트에 사용된 필터는 빨갛게 칠해진 3개다.
+* OAuth2ClientAuthenticationFilter : Client로부터 받은 인증 요청을 처리하는 필터
+  * ClientSecretBasicAuthenticationConverter : 테스트에 사용된 client_secret_basic Authorization 헤더에서 clientId, clientSecret을 추출한다.
+  * ClientSecretAuthenticationProvider : 입력 받은 clientId, clientSecret을 검증한다.
+* OAuth2TokenEndpointFilter : 토큰 발급 endpoint 필터 
+  * OAuth2ClientCredentialsAuthenticationConverter : client_credentials 방식을 지원하는 OAuth2ClientCredentialsAuthenticationToken 토큰 생성 
+  * OAuth2ClientCredentialsAuthenticationProvider : OAuth2ClientCredentialsAuthenticationToken 토큰을 읽고 AccessToken을 생성
+* BearerTokenAuthenticationFilter : Bearer Token을 인증하는 필터
+  * JwtAuthenticationProvider : jwt를 검증한다. 
+
+만약 다른 인증 방식, endpoint, 토큰 타입 등을 활용한다면 사용되는 구현체가 달라질 수 있다.
 
 ## References
 * The OAuth 2.0 Authorization Framework : https://www.rfc-editor.org/rfc/rfc6749
